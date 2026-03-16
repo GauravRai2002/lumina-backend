@@ -1,0 +1,8 @@
+node_modules/
+uploads/
+dist/
+.env
+snaplearn.db
+snaplearn.db-wal
+snaplearn.db-shm
+.DS_Store
