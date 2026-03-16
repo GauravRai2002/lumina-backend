@@ -9,6 +9,7 @@ import generateRouter from "./routes/generate";
 import chatRouter from "./routes/chat";
 import flashcardReviewRouter from "./routes/flashcard-review";
 import materialsRouter from "./routes/materials";
+import ttsRouter from "./routes/tts";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -27,6 +28,7 @@ app.use("/api", generateRouter);
 app.use("/api", chatRouter);
 app.use("/api", flashcardReviewRouter);
 app.use("/api", materialsRouter);
+app.use("/api", ttsRouter);
 
 app.get("/health", (req, res) => {
   res.json({ status: "ok" });
