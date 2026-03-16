@@ -120,6 +120,21 @@ export async function getGeneratedContent(materialId: string, type: string) {
   } | undefined;
 }
 
+export async function getAllGeneratedContent(materialId: string, type: string) {
+  const db = getDb();
+  const result = await db.execute({
+    sql: "SELECT * FROM generated_content WHERE material_id = ? AND type = ? ORDER BY created_at DESC",
+    args: [materialId, type]
+  });
+  return result.rows as unknown as {
+    id: string;
+    material_id: string;
+    type: string;
+    content: string;
+    created_at: string;
+  }[];
+}
+
 // Flashcard review helpers
 export async function getFlashcardReviews(materialId: string) {
   const db = getDb();

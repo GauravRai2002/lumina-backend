@@ -1,5 +1,5 @@
 import express from "express";
-import { getMaterial, saveGeneratedContent, getGeneratedContent } from "../lib/db";
+import { getMaterial, saveGeneratedContent, getGeneratedContent, getAllGeneratedContent } from "../lib/db";
 import { generateNotes, generateQuiz, generateFlashcards } from "../lib/ai";
 import { v4 as uuidv4 } from "uuid";
 
@@ -7,7 +7,7 @@ const router = express.Router();
 
 router.post("/generate", async (req, res) => {
   try {
-    const { materialId, type } = req.body;
+    const { materialId, type, forceRegenerate } = req.body;
 
     if (!materialId || !type) {
       return res.status(400).json({ error: "materialId and type are required" });
@@ -17,14 +17,16 @@ router.post("/generate", async (req, res) => {
       return res.status(400).json({ error: "type must be one of: notes, quiz, flashcards" });
     }
 
-    const existing = await getGeneratedContent(materialId, type);
-    if (existing) {
-      return res.json({
-        id: existing.id,
-        type: existing.type,
-        content: existing.content,
-        cached: true,
-      });
+    if (!forceRegenerate) {
+      const existing = await getGeneratedContent(materialId, type);
+      if (existing) {
+        return res.json({
+          id: existing.id,
+          type: existing.type,
+          content: existing.content,
+          cached: true,
+        });
+      }
     }
 
     const material = await getMaterial(materialId);
@@ -44,6 +46,26 @@ router.post("/generate", async (req, res) => {
   } catch (error) {
     console.error("Generate error:", error);
     res.status(500).json({ error: "Failed to generate content" });
+  }
+});
+
+router.get("/generate", async (req, res) => {
+  try {
+    const { materialId, type } = req.query;
+
+    if (!materialId || !type) {
+      return res.status(400).json({ error: "materialId and type are required" });
+    }
+
+    if (!["notes", "quiz", "flashcards"].includes(type as string)) {
+      return res.status(400).json({ error: "type must be one of: notes, quiz, flashcards" });
+    }
+
+    const contents = await getAllGeneratedContent(materialId as string, type as string);
+    return res.json({ contents });
+  } catch (error) {
+    console.error("Fetch generated content error:", error);
+    res.status(500).json({ error: "Failed to fetch generated content" });
   }
 });
 
