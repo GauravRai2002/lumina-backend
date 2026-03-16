@@ -1,4 +1,4 @@
-/// <reference path="../types/youtube-transcript.d.ts" />
+// YouTube transcript type removed via rapid api
 import express from "express";
 import cors from "cors";
 import multer from "multer";
@@ -32,20 +32,39 @@ router.post("/upload", upload.single("file"), async (req, res) => {
 
       if (youtubeUrl) {
         try {
-          // Must use the ESM bundle path directly — the default CJS entry is broken
-          const { YoutubeTranscript } = await import("youtube-transcript/dist/youtube-transcript.esm.js");
-          const transcript = await YoutubeTranscript.fetchTranscript(youtubeUrl);
-          const transcriptText = transcript.map((t: any) => t.text).join(" ");
+          const videoId = youtubeUrl.match(/(?:v=|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1] || "video";
+          
+          const response = await fetch(`https://yt-api.p.rapidapi.com/get_transcript?id=${videoId}`, {
+            method: 'GET',
+            headers: {
+              'x-rapidapi-key': process.env.RAPID_API_KEY as string,
+              'x-rapidapi-host': 'yt-api.p.rapidapi.com',
+            }
+          });
+
+          if (!response.ok) {
+            throw new Error(`RapidAPI Error: ${response.status} ${response.statusText}`);
+          }
+
+          const data = await response.json();
+          // yt-api usually returns { data: [{ text: "...", offset: ... }] } or an array directly
+          const transcriptData = Array.isArray(data) ? data : data.data || [];
+          
+          if (!transcriptData.length) {
+            return res.status(400).json({ error: "Could not find a transcript for this video." });
+          }
+
+          const transcriptText = transcriptData.map((t: any) => t.text).join(" ");
+          
           if (!transcriptText.trim()) return res.status(400).json({ error: "Empty transcript" });
 
           const id = uuidv4();
-          const videoId = youtubeUrl.match(/(?:v=|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1] || "video";
           const videoTitle = `YouTube: ${videoId}`;
           await createMaterial(id, videoTitle, "youtube", transcriptText);
           return res.json({ id, title: videoTitle, sourceType: "youtube", textLength: transcriptText.length });
         } catch (ytErr: any) {
-          console.error("YouTube transcript error:", ytErr?.message || ytErr);
-          return res.status(400).json({ error: "Failed to fetch YouTube transcript" });
+          console.error("YouTube transcript API error:", ytErr?.message || ytErr);
+          return res.status(400).json({ error: "Failed to fetch YouTube transcript via API" });
         }
       }
 
