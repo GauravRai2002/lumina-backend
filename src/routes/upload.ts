@@ -47,8 +47,15 @@ router.post("/upload", upload.single("file"), async (req, res) => {
           }
 
           const data = await response.json();
-          // yt-api usually returns { data: [{ text: "...", offset: ... }] } or an array directly
-          const transcriptData = Array.isArray(data) ? data : data.data || [];
+          let transcriptData: any[] = [];
+          
+          if (Array.isArray(data)) {
+            transcriptData = data;
+          } else if (data.data && Array.isArray(data.data)) {
+            transcriptData = data.data;
+          } else if (data.transcript && Array.isArray(data.transcript)) {
+            transcriptData = data.transcript;
+          }
           
           if (!transcriptData.length) {
             return res.status(400).json({ error: "Could not find a transcript for this video." });
